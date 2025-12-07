@@ -4,6 +4,7 @@ using Avalonia.Data.Core;
 using Avalonia.Data.Core.Plugins;
 using System.Linq;
 using Avalonia.Markup.Xaml;
+using InTact.Client.Net;
 using InTact.Client.ViewModels;
 using InTact.Client.Views;
 
@@ -15,7 +16,7 @@ public partial class App : Application
     {
         AvaloniaXamlLoader.Load(this);
     }
-
+    
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime desktop)
@@ -23,10 +24,12 @@ public partial class App : Application
             // Avoid duplicate validations from both Avalonia and the CommunityToolkit. 
             // More info: https://docs.avaloniaui.net/docs/guides/development-guides/data-validation#manage-validationplugins
             DisableAvaloniaDataAnnotationValidation();
-            desktop.MainWindow = new MainWindow
+            desktop.MainWindow = new AuthWindow()
             {
-                DataContext = new MainWindowViewModel(),
+                DataContext = new AuthWindowViewModel(),
             };
+            
+            Global.authWindow = desktop.MainWindow;
         }
 
         base.OnFrameworkInitializationCompleted();

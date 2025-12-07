@@ -1,3 +1,13 @@
-﻿// See https://aka.ms/new-console-template for more information
+﻿using System.Text.Json;
+using System.Text.Json.Serialization.Metadata;
+using Intact.Host;
 
-Console.WriteLine("Hello, World!");
+ServerConfig a = JsonSerializer.Deserialize<ServerConfig>(File.ReadAllText("./config/config.json"), new  JsonSerializerOptions
+{
+    PropertyNameCaseInsensitive = true,
+    TypeInfoResolver = new DefaultJsonTypeInfoResolver()
+});
+
+var server = new ServerNode(a.Port, "Secret", a.UserTokens, [], a.Chats);
+
+server.Start();

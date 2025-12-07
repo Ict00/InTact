@@ -2,8 +2,53 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
+        xmlns:vm="using:InTact.Client.ViewModels"
+        xmlns:ava="using:InTact.Client.Models.Avaloniaed"
+        xmlns:vvm="using:InTactCommon.Objects"
+        xmlns:controls="clr-namespace:Material.Styles.Controls;assembly=Material.Styles"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="InTact.Client.Views.AuthWindow"
-        Title="AuthWindow">
-    Welcome to Avalonia!
+        x:DataType="vm:AuthWindowViewModel"
+        Title="Auth Window"
+        Height="600"
+        Width="500"
+        MinHeight="600"
+        MaxHeight="600"
+        MinWidth="500"
+        MaxWidth="500">
+
+        <Grid>
+                <Grid RowDefinitions="*,70,70,30,60,140,*" IsVisible="{Binding AuthWindow}">
+                        <StackPanel Grid.Row="1" HorizontalAlignment="Center">
+                                <materialIcons:MaterialIconTextExt HorizontalAlignment="Center" HorizontalContentAlignment="Center" Kind="LinkBoxVariant" IconSize="70"/>
+                        </StackPanel>
+                        <TextBlock Grid.Row="2" Text="InTact" HorizontalAlignment="Center" FontSize="65" FontWeight="DemiBold"/>
+                        <TextBlock Grid.Row="3" Text="Join using token" HorizontalAlignment="Center" FontSize="20" FontWeight="SemiLight"/>
+                        <StackPanel Grid.Row="5" HorizontalAlignment="Center" Width="250" Spacing="6">
+                                <TextBox Watermark="Token" PasswordChar="*" Text="{Binding Token}"/>
+                                <TextBox Watermark="IP:Port" Text="{Binding Address}"/>
+                                <Button Height="40" Content="Join" Command="{Binding Login}"/>
+                        </StackPanel>
+                </Grid>
+                <Grid RowDefinitions="*,40,140,*" IsVisible="{Binding AuthProcess}">
+                        <TextBlock Grid.Row="1" HorizontalAlignment="Center" FontSize="20" Text="Joining..." FontWeight="Light"/>
+                        <ProgressBar Grid.Row="2" Width="140" Height="140" HorizontalAlignment="Center" Classes="circular" IsIndeterminate="True"/>
+                </Grid>
+                <Grid RowDefinitions="*,70,70,60,250,*" IsVisible="{Binding Introducing, Mode=TwoWay}">
+                        <StackPanel Grid.Row="1" HorizontalAlignment="Center">
+                                <materialIcons:MaterialIconTextExt HorizontalAlignment="Center" HorizontalContentAlignment="Center" Kind="LinkBoxVariant" IconSize="70"/>
+                        </StackPanel>
+                        <TextBlock Grid.Row="2" Text="InTact" HorizontalAlignment="Center" FontSize="65" FontWeight="DemiBold"/>
+                        <TextBlock Grid.Row="3" FontWeight="SemiLight" FontSize="30" Text="Introduce yourself to the server" HorizontalAlignment="Center" />
+                        <StackPanel Grid.Row="4" HorizontalAlignment="Center" Width="250" Spacing="6">
+                                <Grid ColumnDefinitions="30,*" ColumnSpacing="10">
+                                        <Rectangle Width="30" Height="30" Fill="{Binding ColorBrush, Mode=TwoWay}" VerticalAlignment="Center" HorizontalAlignment="Left"/>
+                                        <TextBox Grid.Column="1" Text="{Binding IntroEnteredColor, Mode=TwoWay}" Watermark="Color"/>
+                                </Grid>
+                                <TextBox Text="{Binding IntroEnteredUsername, Mode=TwoWay}" Watermark="Username"/>
+                                <Button Command="{Binding IntroduceAndLogin}" Content="Join" Height="40"/>
+                        </StackPanel>
+                </Grid>
+        </Grid>
 </Window>

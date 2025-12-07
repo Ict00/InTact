@@ -9,4 +9,11 @@
         <InvariantGlobalization>true</InvariantGlobalization>
     </PropertyGroup>
 
+    <ItemGroup>
+      <ProjectReference Include="..\InTactCommon\InTactCommon.csproj" />
+        <Content Include="config/**/*">
+            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+        </Content>
+    </ItemGroup>
+
 </Project>

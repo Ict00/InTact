@@ -1,3 +1,15 @@
 {
-
+  "Port": 12700,
+  "Chats": [
+    {
+      "Id": 0,
+      "Name": "general"
+    }
+  ],
+  "UserTokens": [
+    {
+      "Token": "BaseUser",
+      "Id": 0
+    }
+  ]
 }

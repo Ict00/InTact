@@ -1,13 +1,18 @@
 <Window xmlns="https://github.com/avaloniaui"
+        xmlns:materialIcons="clr-namespace:Material.Icons.Avalonia;assembly=Material.Icons.Avalonia"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:vm="using:InTact.Client.ViewModels"
+        xmlns:ava="using:InTact.Client.Models.Avaloniaed"
+        xmlns:vvm="using:InTactCommon.Objects"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:wpf="clr-namespace:Material.Styles.Assists;assembly=Material.Styles"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:controls="clr-namespace:Material.Styles.Controls;assembly=Material.Styles"
         mc:Ignorable="d" d:DesignWidth="800" d:DesignHeight="450"
         x:Class="InTact.Client.Views.MainWindow"
         x:DataType="vm:MainWindowViewModel"
         Icon="/Assets/avalonia-logo.ico"
-        Title="InTact.Client">
+        Title="InTact Client">
 
     <Design.DataContext>
         <!-- This only sets the DataContext for the previewer in an IDE,
@@ -15,6 +20,69 @@
         <vm:MainWindowViewModel/>
     </Design.DataContext>
 
-    <TextBlock Text="{Binding Greeting}" HorizontalAlignment="Center" VerticalAlignment="Center"/>
-
+    <Grid ColumnDefinitions="200,*,190">
+        <Border BorderBrush="Black" BorderThickness="1">
+            <ListBox ItemsSource="{Binding Chats, Mode=TwoWay}" SelectionChanged="OtherChatSelected">
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="vvm:ServerChatInfo">
+                        <TextBlock TextAlignment="Left">
+                            <TextBlock Text="#" FontSize="18" FontStyle="Italic" FontWeight="Bold" Foreground="DarkSlateGray"/>
+                            <TextBlock Text="{Binding Name}"/>
+                        </TextBlock>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+        
+        <Grid Grid.Column="1" RowDefinitions="*,100" ColumnDefinitions="*">
+                <ListBox ItemsSource="{Binding Messages}" AutoScrollToSelectedItem="True">
+                    <ListBox.ItemTemplate>
+                        <DataTemplate DataType="ava:AvaMessage">
+                            <Grid ColumnDefinitions="50,*" Background="{Binding MentionedColor}">
+                                <Border Margin="5" CornerRadius="10" BorderBrush="{Binding AuthorColor}">
+                                    <Rectangle Margin="4" Width="50" Height="50" Fill="{Binding AuthorColor}"/>
+                                </Border>
+                                
+                                <Grid RowDefinitions="20,Auto" Grid.Column="1">
+                                    <WrapPanel ItemSpacing="5">
+                                        <TextBlock FontSize="19" Text="{Binding Author}"/>
+                                        <TextBlock FontSize="19" HorizontalAlignment="Left" Text="{Binding Date}"/>
+                                    </WrapPanel>
+                                    <WrapPanel Grid.Row="1">
+                                        <TextBlock VerticalAlignment="Center" HorizontalAlignment="Left" TextAlignment="Left" FontSize="15"  Text="{Binding Content}" TextWrapping="WrapWithOverflow"/>
+                                    </WrapPanel>
+                                </Grid>
+                            </Grid>
+                        </DataTemplate>
+                    </ListBox.ItemTemplate>
+                </ListBox>
+            <Grid Grid.Row="1" ColumnDefinitions="20,50,*,50,5" ColumnSpacing="8">
+                <controls:FloatingButton Grid.Column="1" Height="50" Width="50" >
+                    <materialIcons:MaterialIconTextExt Kind="AttachmentPlus"/>
+                </controls:FloatingButton>
+                <TextBox Classes="outline" Grid.Column="2" Theme="{StaticResource OutlineTextBox}" UseFloatingWatermark="True" wpf:TextFieldAssist.Label="Message" Text="{Binding InputText, Mode=TwoWay}" FontSize="20" Margin="5"  TextAlignment="Left" VerticalContentAlignment="Center" AcceptsReturn="True"></TextBox>
+                <controls:FloatingButton Grid.Column="3" Height="50" Width="50" Command="{Binding Send}">
+                    <materialIcons:MaterialIconTextExt Kind="Send"/>
+                </controls:FloatingButton>
+            </Grid>
+        </Grid>
+        
+        <Border Grid.Column="2" BorderBrush="Black" BorderThickness="1">
+            <ListBox ItemsSource="{Binding Users}" SelectionChanged="UserSelected">
+                <ListBox.ItemTemplate>
+                    <DataTemplate DataType="ava:AvaUser">
+                        <WrapPanel>
+                            <Grid>
+                                <Rectangle Width="50" Height="50" Fill="{Binding Avatar}"/>
+                                <Rectangle Width="8" Height="8" Fill="{Binding StatusColor}" VerticalAlignment="Bottom" HorizontalAlignment="Right"/>
+                            </Grid>
+                            <WrapPanel ItemSpacing="5">
+                                <TextBlock Text="{Binding Name}" TextAlignment="Center" VerticalAlignment="Center" Margin="2"/>
+                            </WrapPanel>
+                        </WrapPanel>
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+        </Border>
+    </Grid>
 </Window>

@@ -1,143 +1,204 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.ComponentModel;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Avalonia;
+using Avalonia.Media;
 using Avalonia.Threading;
 using CommunityToolkit.Mvvm.Input;
 using InTact.Client.Models.Avaloniaed;
 using InTact.Client.Net;
+using InTact.Client.Views;
 using InTactCommon.Networking.Packets;
 using InTactCommon.Objects;
 
 namespace InTact.Client.ViewModels;
 
-public partial class MainWindowViewModel : ViewModelBase
+
+
+public partial class AuthWindowViewModel : ViewModelBase
 {
-    public string Greeting { get; } = "Welcome to Avalonia!";
-    public ObservableCollection<AvaMessage> Messages { get; set; } = [];
-    public ObservableCollection<AvaUser> Users { get; set; } = [];
-    public ObservableCollection<ServerChatInfo> Chats { get; set; } = [];
-    public ulong CurrentChatId { get; set; } = 0;
-    private string inp = string.Empty;
+    private JoinState _authing = JoinState.NotAuthing;
 
-    public string InputText
+    public JoinState AuthingNow
     {
-        get => inp;
-        set => SetProperty(ref inp, value);
-    }
-
-    public MainWindowViewModel()
-    {
-        Global.client = new ClientNode(12700, "127.0.0.1", "Secret", "XXX");
-        Global.client.Start();
-        
-        Global.client._handler.Attach<MessageSentPacket>((x, y) =>
+        get => _authing;
+        set
         {
-            AddMessage(x.MessageSent, x.ChatId);
-        });
-        
-        Global.client._handler.Attach<UserChangedStatus>((x, y) =>
-        {
-            int index = 0;
-            foreach (var i in Users)
-            {
-                if (i.Id == x.UserId)
-                {
-                    index = Users.IndexOf(i);
-                    break;
-                }
-            }
-
-            Users[index] = AvaUser.WithStatus(Users[index], x.NewStatus);
-        });
-        
-        while (!Global.client.Joined || Global.client.Chats.Count == 0 || Global.client.Users.Count == 0)
-        {
-            Global.client.Poll();
+            SetProperty(ref _authing, value);
+            OnPropertyChanged(nameof(AuthProcess));
+            OnPropertyChanged(nameof(AuthWindow));
+            OnPropertyChanged(nameof(Introducing));
         }
-        
-        CurrentChatId = Global.client.Chats[0].Id;
-
-        foreach (var chat in Global.client.Chats)
-        {
-            Chats.Add(new(chat.Id, chat.Name));
-        }
-
-        foreach (var usr in Global.client.Users)
-        {
-            Users.Add(AvaUser.FromUser(usr));
-        }
-        
-        AddAllFromChatId(CurrentChatId);
-        
-        Global.running = true;
-        Global.pollThread = new Thread(() =>
-        {
-            while (Global.running)
-            {
-                Global.client.Poll();
-                Thread.Sleep(30);
-            }
-        });
-
-        Global.pollThread.Start();
-    }
-
-    private void AddAllFromChatId(ulong id)
-    {
-        Dispatcher.UIThread.Invoke(() =>
-        {
-            var chat = Global.client.Chats.Find(x => x.Id == id)!;
-            Messages.Clear();
-            chat.Messages.ForEach(m => Messages.Add(AvaMessage.FromMessage(m)));
-        });
-    }
-
-    public void ChangeChat(ulong id)
-    {
-        CurrentChatId = id;
-        AddAllFromChatId(CurrentChatId);
-    }
-
-    private void AddMessage(Message message, ulong id)
-    {
-        Dispatcher.UIThread.Invoke(() =>
-        {
-            if (id == CurrentChatId)
-            {
-                Messages.Add(AvaMessage.FromMessage(message));
-            }
-        });
     }
     
-    [RelayCommand]
-    public async Task Send()
+    public bool AuthWindow => AuthingNow == JoinState.NotAuthing;
+    public bool AuthProcess => AuthingNow == JoinState.Authing;
+    public bool Introducing => AuthingNow == JoinState.Introducing;
+    
+    public string Token { get; set; } = "";
+    public string Address { get; set; } = "";
+
+    private string inp = "";
+
+    public string IntroEnteredColor
     {
-        List<ulong> mentions = [];
-        
-        Users.ToList().ForEach(x =>
+        get => inp;
+        set
         {
-            if (InputText.Contains($"@{x.Name}"))
+            SetProperty(ref inp, value);
+            OnPropertyChanged(nameof(ColorBrush));
+        }
+    }
+    public string IntroEnteredUsername { get; set; } = "";
+    private IBrush brush;
+
+    public IBrush ColorBrush
+    {
+        get
+        {
+            try
             {
-                mentions.Add(x.Id);
+                var a = new SolidColorBrush(Color.Parse(IntroEnteredColor));
+
+                return a;
+            }
+            catch (Exception ex)
+            {
+                return Brushes.Black;
+            }
+        }
+    }
+
+    [RelayCommand]
+    public async Task Login()
+    {
+        AuthingNow = JoinState.Authing;
+        if (!Address.Contains(':'))
+        {
+            AuthingNow = JoinState.NotAuthing;
+            return;
+        }
+        string ip = Address.Split(':')[0];
+        if (int.TryParse(Address.Split(':')[1], out int port))
+        {
+            await ActuallyLogin(ip, port, Token);
+        }
+        else
+        {
+            AuthingNow = JoinState.NotAuthing;
+        }
+    }
+
+    [RelayCommand]
+    public async Task IntroduceAndLogin()
+    {
+        SColor sColor = new()
+        {
+            R = 0,
+            G = 0,
+            B = 0
+        };
+        
+        if (Color.TryParse(IntroEnteredColor, out Color colorForBrush))
+        {
+            sColor.R = colorForBrush.R;
+            sColor.G = colorForBrush.G;
+            sColor.B = colorForBrush.B;
+        }
+
+        new IntroductionUser()
+        {
+            Username = IntroEnteredUsername,
+            PfpColor = sColor,
+            Token = Token
+        }.SendPacketTo(Global.client.Server!, Global.client._writer);
+
+        bool stillTry = true;
+        
+        Global.client._handler.Attach<JoinServerResponse>((x, y) =>
+        {
+            if (x.Status == JoinStatus.Joined)
+            {
+                stillTry = false;
+                AuthingNow = JoinState.Authing;
+            }
+            else
+            {
+                stillTry = false;
+                AuthingNow = JoinState.NotAuthing;
             }
         });
         
-        new MessageSentPacket()
+        Global.client.WaitTillLoaded(() => Global.client._client.IsRunning);
+
+        if (AuthingNow == JoinState.NotAuthing)
         {
-            MessageSent = new Message()
+            IntroEnteredColor = "";
+            IntroEnteredUsername = "";
+        }
+        else
+        {
+            Global.authWindow.Hide();
+
+            new MainWindow()
             {
-                AuthorId = Global.client.SelfId,
-                Timestamp = DateTime.Now.ToBinary(),
-                Content = inp,
-                Id = 0,
-                Mentions = mentions
-            },
-            ChatId = CurrentChatId
-        }.SendPacketTo(Global.client.Server!, Global.client._writer);
-        InputText = string.Empty;
+                DataContext = new MainWindowViewModel()
+            }.Show();
+        }
     }
+
+    private async Task ActuallyLogin(string address, int port, string token)
+    {
+        Global.client = new ClientNode(port, address, "Secret", token);
+        try
+        {
+            bool stillTry = true;
+            
+            Global.client._handler.Attach<JoinServerResponse>((x, y) =>
+            {
+                if (x.Status == JoinStatus.IntroduceYourself)
+                {
+                    stillTry = false;
+                    AuthingNow = JoinState.Introducing;
+                }
+                else if (x.Status != JoinStatus.Joined)
+                {
+                    stillTry = false;
+                    AuthingNow = JoinState.NotAuthing;
+                }
+            });
+            
+            Global.client.Start();
+            
+            Global.client.WaitTillLoaded(() => stillTry);
+
+            if (stillTry)
+            {
+                Global.authWindow.Hide();
+
+                new MainWindow()
+                {
+                    DataContext = new MainWindowViewModel()
+                }.Show();
+                AuthingNow = JoinState.NotAuthing;
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+            AuthingNow = JoinState.NotAuthing;
+        }
+    }
+}
+
+
+public enum JoinState
+{
+    NotAuthing,
+    Authing,
+    Introducing
 }

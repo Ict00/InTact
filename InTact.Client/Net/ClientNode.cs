@@ -1,10 +1,15 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Threading;
 using InTactCommon.Networking.Packets;
 using InTactCommon.Objects;
 using LiteNetLib;
 using LiteNetLib.Utils;
 using MessagePack;
 
-namespace InTact.Client.CLI.Utils;
+namespace InTact.Client.Net;
+
 
 public class ClientNode
 {
@@ -24,10 +29,22 @@ public class ClientNode
     public bool Joined = false;
     public ulong SelfId = 8;
     public NetPeer? Server = null;
+    
+    public Dictionary<ulong, List<Message>> DmMessages = new();
 
     public User GetByIdNotNull(ulong id)
     {
         return Users.Find(x => x.Id == id)!;
+    }
+
+    public delegate bool Condition();
+
+    public void WaitTillLoaded(Condition additional)
+    {
+        while ((!Global.client.Joined || Global.client.Chats.Count == 0 || Global.client.Users.Count == 0) && additional())
+        {
+            Global.client.Poll();
+        }
     }
     
     public ClientNode(int port, string ip, string secret, string token)
@@ -38,6 +55,25 @@ public class ClientNode
         _token = token;
         
         _client = new NetManager(_listener);
+        
+        _handler.Attach<ResponseDms>((x, y) =>
+        {
+            DmMessages = x.DMs;
+        });
+        
+        _handler.Attach<MessageSentDm>((x, y) =>
+        {
+            if (x.FromUser == Global.client.SelfId)
+            {
+                DmMessages.TryAdd(x.ToUser, []);
+                DmMessages[x.ToUser].Add(x.Message);
+                return;
+            }
+            
+            DmMessages.TryAdd(x.FromUser, []);
+            
+            DmMessages[x.FromUser].Add(x.Message);
+        });
         
         _handler.Attach<MessageSentPacket>((x, y) =>
         {
@@ -54,6 +90,11 @@ public class ClientNode
         _handler.Attach<ResponseUsers>((x, y) =>
         { 
             Users = x.Users;
+        });
+        
+        _handler.Attach<UserAdded>((x, y) =>
+        { 
+            Users.Add(x.User);
         });
 
         _handler.Attach<ResponseChat>((x, y) =>
@@ -80,23 +121,19 @@ public class ClientNode
                 new RequestUsers().SendPacketTo(Server!, _writer);
 
                 SelfId = x.User;
-                
-                Console.WriteLine($"User: {x.User}");
             }
-            else if (x.Status == JoinStatus.Pending)
+            else if (x.Status == JoinStatus.IntroduceYourself)
             {
-                /* Do nothing */
+                
             }
             else
             {
                 try
                 {
-                    Server?.Disconnect();
                     _client.Stop();
+                    Server?.Disconnect();
                 }
-                catch (Exception) { /* Ignore */ }
-
-                Environment.Exit(0);
+                catch (Exception e) { Console.WriteLine(e); }
             }
         });
         
@@ -131,7 +168,6 @@ public class ClientNode
         catch (Exception ex)
         {
             Console.WriteLine($"Error: {ex}");
-            
         }
     }
 

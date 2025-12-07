@@ -1,3 +1,3 @@
 namespace InTactCommon.Objects;
 
-public record SavedUser(string Token, ulong Id);
+public record UserToken(string Token, ulong Id);
